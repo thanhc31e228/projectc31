@@ -11,6 +11,8 @@ interface MiniSquaresProps {
   col: number;
   rows: number;
   cols: number;
+  coordinates?: number | null;
+  subCoordinates?: string | null;
   onPointClick: (point: Point) => void;
 }
 
@@ -20,22 +22,29 @@ const MiniSquares = ({
   col,
   rows,
   cols,
+  coordinates,
+  subCoordinates,
 }: MiniSquaresProps) => {
   const lineColor = "rgba(71, 85, 105, 0.35)";
-
-  const points = [
-    { id: "TL", x: 20, y: 20 },
-    { id: "TR", x: 80, y: 20 },
-    { id: "BL", x: 20, y: 80 },
-    { id: "BR", x: 80, y: 80 },
-    { id: "C", x: 50, y: 50 },
+  // const points = [
+  //   { id: "TL", x: 20, y: 20 },
+  //   { id: "TR", x: 80, y: 20 },
+  //   { id: "BL", x: 20, y: 80 },
+  //   { id: "BR", x: 80, y: 80 },
+  //   { id: "C", x: 50, y: 50 },
+  // ];
+    const points = [
+    { id: "1", x: 20, y: 20 },
+    { id: "2", x: 80, y: 20 },
+    { id: "4", x: 20, y: 80 },
+    { id: "3", x: 80, y: 80 },
+    { id: "5", x: 50, y: 50 },
   ];
-
+  // console.log("id", coordinates + '' + subCoordinates);
   const getPointPosition = (x: number, y: number) => ({
     x: ((col * 100 + x) / (cols * 100)) * 1000,
     y: ((row * 100 + y) / (rows * 100)) * 1000,
   });
-
   return (
     <svg
       className="mini-squares"
@@ -118,16 +127,17 @@ const MiniSquares = ({
           point.x,
           point.y
         );
-
+        // vị trí của điểm trong không gian SVG lớn (1000x1000) để vẽ đường nối
+        // console.log("Point position:", { point, position });
         return (
           <circle
             key={point.id}
             className="connection-point"
             cx={point.x}
             cy={point.y}
-            r="20"
+            r="30"
             fill="transparent"
-            data-point-id={`${row}-${col}-${point.id}`}
+            data-point-id={`${coordinates}-${row}-${col}-${point.id}`}
             data-point-x={position.x}
             data-point-y={position.y}
           />

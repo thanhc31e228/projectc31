@@ -5,7 +5,6 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   grid-template-rows: repeat(5, minmax(0, 1fr));
-
   overflow: hidden;
 }
 
@@ -33,4 +32,15 @@
 /* Chỉ hiện ô nhỏ đang hover */
 .square-grid-cell:hover .mini-squares {
   opacity: 1;
+}
+.coordinates {
+  position: absolute;
+  /* top: 50%; */
+  /* left: 50%; */
+  /* transform: translate(-50%, -50%); */
+  z-index: 10;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

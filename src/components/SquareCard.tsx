@@ -34,6 +34,8 @@ console.log("Rendering SquareCard", { row, col, rows, cols });
         onPointClick={onPointClick}
       /> */}
       <SquareGrid
+        coordinates={2}
+        subCoordinates={null}
         row={row}
         col={col}
         rows={rows}

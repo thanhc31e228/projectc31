@@ -71,7 +71,7 @@ const Dashboard = () => {
 
   // Click điểm để tạo đường nối
   const handlePointClick = (point: Point) => {
-    console.log("Point clicked:", point);
+    // console.log("Point clicked:", point);
     if (!selectedPoint) {
       setSelectedPoint(point);
       return;
@@ -118,39 +118,42 @@ const Dashboard = () => {
   const pointerDownPoint = useRef<Point | null>(null);
 
   // Zoom bằng Ctrl + lăn chuột
-  const handleWheel = (
-    e: React.WheelEvent<HTMLDivElement>
-  ) => {
-    if (!e.ctrlKey) return;
+ const handleWheel = (
+  e: React.WheelEvent<HTMLDivElement>
+) => {
+  if (!e.ctrlKey) return;
 
-    e.preventDefault();
+  e.preventDefault();
 
-    const viewport = viewportRef.current;
-    if (!viewport) return;
+  const viewport = viewportRef.current;
+  if (!viewport) return;
 
-    const rect = viewport.getBoundingClientRect();
+  const rect = viewport.getBoundingClientRect();
 
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+  // Tọa độ con trỏ trong viewport
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
 
-    setScale((prevScale) => {
-      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+  // Tính hệ số zoom liên tục
+  const zoomSpeed = 0.002;
+  const zoomFactor = Math.exp(-e.deltaY * zoomSpeed);
 
-      const newScale = Math.min(
-        Math.max(prevScale * zoomFactor, 0.3),
-        4
-      );
+  const newScale = Math.min(
+    Math.max(scale * zoomFactor, 0.3),
+    4
+  );
 
-      const ratio = newScale / prevScale;
+  // Tính tỷ lệ thay đổi zoom
+  const ratio = newScale / scale;
 
-      setPosition((prevPosition) => ({
-        x: mouseX - (mouseX - prevPosition.x) * ratio,
-        y: mouseY - (mouseY - prevPosition.y) * ratio,
-      }));
+  // Giữ nguyên vị trí dưới con trỏ chuột
+  setPosition({
+    x: mouseX - (mouseX - position.x) * ratio,
+    y: mouseY - (mouseY - position.y) * ratio,
+  });
 
-      return newScale;
-    });
-  };
+  setScale(newScale);
+};
 
   // Bắt đầu nhấn chuột
   const handlePointerDown = (
@@ -257,6 +260,15 @@ const Dashboard = () => {
     }
   };
 
+  // danh sách tọa độ lấy từ databse
+  const setCoordinates: number[] = [
+    7, 83, 21, 56, 94, 12, 68,
+    35, 1, 79, 43, 90, 26, 61,
+    18, 72, 5, 47, 99, 32, 84,
+    14, 53, 8, 66, 39, 92, 24,
+    75, 11, 58, 3, 87, 41, 29,
+    63, 16, 96, 50, 34, 70, 45
+  ];
   return (
     <div
       ref={viewportRef}
@@ -273,10 +285,14 @@ const Dashboard = () => {
           transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
         }}
       >
-        {/* Các ô vuông */}
-        {Array.from({ length: rows }, (_, row) =>
-          Array.from({ length: cols }, (_, col) => (
+       {/* Các ô vuông */}
+      {Array.from({ length: rows }, (_, row) =>
+        Array.from({ length: cols }, (_, col) => {
+          const index = row * cols + col;
+
+          return (
             <SquareGrid
+              coordinates={setCoordinates[index] ?? null}
               key={`${row}-${col}`}
               row={row}
               col={col}
@@ -284,8 +300,9 @@ const Dashboard = () => {
               cols={cols}
               onPointClick={handlePointClick}
             />
-          ))
-        )}
+          );
+        })
+      )}
 
         {/* Lớp SVG vẽ đường nối */}
         <svg
@@ -295,23 +312,22 @@ const Dashboard = () => {
         >
           <defs>
             <marker
-              id="arrow"
-              markerWidth="8"
-              markerHeight="8"
-              refX="6"
-              refY="3"
-              orient="auto"
-              markerUnits="userSpaceOnUse"
-            >
-              <path
-                d="M 0 0 L 6 3 L 0 6"
-                fill="none"
-                stroke="#ef4444"
-                strokeWidth="0.3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </marker>
+  id="arrow"
+  markerWidth="8"
+  markerHeight="8"
+  refX="6"
+  refY="3"
+  orient="auto"
+  markerUnits="userSpaceOnUse"
+>
+  <path
+    d="M 0 0 L 6 3"
+    fill="none"
+    stroke="#ef4444"
+    strokeWidth="1"
+    strokeLinecap="round"
+  />
+</marker>
           </defs>
 
           <path

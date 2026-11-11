@@ -1,6 +1,5 @@
 
 import { useRef, useState } from "react";
-import SquareCard from "./SquareCard";
 import "../assets/styles/Dashboard.css";
 import SquareGrid from "./SquareGrid";
 
@@ -15,10 +14,11 @@ interface Connection {
   from: Point;
   to: Point;
 }
+
+// Tạo đường cong nối các điểm
 const generateSmoothPath = (connections: Connection[]) => {
   if (connections.length === 0) return "";
 
-  // Lấy danh sách điểm liên tục
   const points: Point[] = [
     connections[0].from,
     ...connections.map((connection) => connection.to),
@@ -54,6 +54,7 @@ const generateSmoothPath = (connections: Connection[]) => {
 
   return path;
 };
+
 const Dashboard = () => {
   const rows = 6;
   const cols = 7;
@@ -69,30 +70,26 @@ const Dashboard = () => {
 
   // Click điểm để tạo đường nối
   const handlePointClick = (point: Point) => {
-  // Chưa chọn điểm bắt đầu
-  if (!selectedPoint) {
+    if (!selectedPoint) {
+      setSelectedPoint(point);
+      return;
+    }
+
+    if (selectedPoint.id === point.id) return;
+
+    setConnections((prev) => [
+      ...prev,
+      {
+        id: ++connectionId.current,
+        from: selectedPoint,
+        to: point,
+      },
+    ]);
+
     setSelectedPoint(point);
-    return;
-  }
+  };
 
-  // Không nối một điểm với chính nó
-  if (selectedPoint.id === point.id) return;
-
-  // Tạo đường nối
-  setConnections((prev) => [
-    ...prev,
-    {
-      id: ++connectionId.current,
-      from: selectedPoint,
-      to: point,
-    },
-  ]);
-
-  // Giữ điểm vừa click làm điểm bắt đầu tiếp theo
-  setSelectedPoint(point);
-};
-
-  // Zoom và kéo bảng
+  // Zoom bảng
   const [scale, setScale] = useState(1);
 
   const [position, setPosition] = useState({
@@ -102,12 +99,21 @@ const Dashboard = () => {
 
   const viewportRef = useRef<HTMLDivElement>(null);
 
+  // Quản lý kéo bảng
   const dragging = useRef(false);
+  const hasMoved = useRef(false);
+
+  const startPointer = useRef({
+    x: 0,
+    y: 0,
+  });
 
   const lastPointer = useRef({
     x: 0,
     y: 0,
   });
+
+  const pointerDownPoint = useRef<Point | null>(null);
 
   // Zoom bằng Ctrl + lăn chuột
   const handleWheel = (
@@ -136,49 +142,71 @@ const Dashboard = () => {
       const ratio = newScale / prevScale;
 
       setPosition((prevPosition) => ({
-        x:
-          mouseX -
-          (mouseX - prevPosition.x) * ratio,
-        y:
-          mouseY -
-          (mouseY - prevPosition.y) * ratio,
+        x: mouseX - (mouseX - prevPosition.x) * ratio,
+        y: mouseY - (mouseY - prevPosition.y) * ratio,
       }));
 
       return newScale;
     });
   };
 
-  // Bắt đầu kéo bảng
+  // Bắt đầu nhấn chuột
   const handlePointerDown = (
     e: React.PointerEvent<HTMLDivElement>
   ) => {
     if (e.button !== 0) return;
 
-    // Không kéo bảng khi click vào điểm
-    const target = e.target;
-
-    if (
-      target instanceof Element &&
-      target.closest(".connection-point")
-    ) {
-      return;
-    }
-
     dragging.current = true;
+    hasMoved.current = false;
+
+    startPointer.current = {
+      x: e.clientX,
+      y: e.clientY,
+    };
 
     lastPointer.current = {
       x: e.clientX,
       y: e.clientY,
     };
 
+    // Kiểm tra có nhấn vào điểm nối không
+    const target = e.target;
+
+    if (
+      target instanceof Element &&
+      target.closest(".connection-point")
+    ) {
+      const pointElement = target.closest(
+        ".connection-point"
+      ) as SVGCircleElement;
+
+      pointerDownPoint.current = {
+        id: pointElement.dataset.pointId!,
+        x: Number(pointElement.dataset.pointX),
+        y: Number(pointElement.dataset.pointY),
+      };
+    } else {
+      pointerDownPoint.current = null;
+    }
+
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
-  // Di chuyển bảng
+  // Di chuyển chuột
   const handlePointerMove = (
     e: React.PointerEvent<HTMLDivElement>
   ) => {
     if (!dragging.current) return;
+
+    const dx = e.clientX - startPointer.current.x;
+    const dy = e.clientY - startPointer.current.y;
+
+    // Di chuyển quá 5px thì xác định là kéo
+    if (Math.sqrt(dx * dx + dy * dy) > 5) {
+      hasMoved.current = true;
+    }
+
+    if (!hasMoved.current) return;
 
     const deltaX = e.clientX - lastPointer.current.x;
     const deltaY = e.clientY - lastPointer.current.y;
@@ -194,9 +222,37 @@ const Dashboard = () => {
     }));
   };
 
-  // Kết thúc kéo
-  const handlePointerUp = () => {
+  // Kết thúc thao tác
+  const handlePointerUp = (
+    e: React.PointerEvent<HTMLDivElement>
+  ) => {
+    if (!dragging.current) return;
+
+    // Chỉ tạo đường nối nếu thực sự click
+    if (!hasMoved.current && pointerDownPoint.current) {
+      handlePointClick(pointerDownPoint.current);
+    }
+
     dragging.current = false;
+    hasMoved.current = false;
+    pointerDownPoint.current = null;
+
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  };
+
+  // Hủy thao tác
+  const handlePointerCancel = (
+    e: React.PointerEvent<HTMLDivElement>
+  ) => {
+    dragging.current = false;
+    hasMoved.current = false;
+    pointerDownPoint.current = null;
+
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
   };
 
   return (
@@ -207,7 +263,7 @@ const Dashboard = () => {
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
     >
       <div
         className="square-board"
@@ -230,44 +286,43 @@ const Dashboard = () => {
         )}
 
         {/* Lớp SVG vẽ đường nối */}
-       <svg
-     className="connection-layer"
-  viewBox="0 0 1000 1000"
-  preserveAspectRatio="none"
->
-  <defs>
-    <marker
-      id="arrow"
-      markerWidth="8"
-      markerHeight="8"
-      refX="6"
-      refY="3"
-      orient="auto"
-      markerUnits="userSpaceOnUse"
-    >
-      <path
-        d="M 0 0 L 6 3 L 0 6"
-        fill="none"
-        stroke="#ef4444"
-        strokeWidth="0.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </marker>
-  </defs>
+        <svg
+          className="connection-layer"
+          viewBox="0 0 1000 1000"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <marker
+              id="arrow"
+              markerWidth="8"
+              markerHeight="8"
+              refX="6"
+              refY="3"
+              orient="auto"
+              markerUnits="userSpaceOnUse"
+            >
+              <path
+                d="M 0 0 L 6 3 L 0 6"
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="0.3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </marker>
+          </defs>
 
-  {/* Đường cong */}
-  <path
-    d={generateSmoothPath(connections)}
-    fill="none"
-    stroke="#ef4444"
-    strokeWidth="1"
-    vectorEffect="non-scaling-stroke"
-    strokeLinecap="round"
-    markerMid="url(#arrow)"
-    markerEnd="url(#arrow)"
-  />
-</svg>
+          <path
+            d={generateSmoothPath(connections)}
+            fill="none"
+            stroke="#ef4444"
+            strokeWidth="1"
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+            markerMid="url(#arrow)"
+            markerEnd="url(#arrow)"
+          />
+        </svg>
       </div>
     </div>
   );

@@ -20,7 +20,6 @@ const MiniSquares = ({
   col,
   rows,
   cols,
-  onPointClick,
 }: MiniSquaresProps) => {
   const lineColor = "rgba(71, 85, 105, 0.35)";
 
@@ -32,11 +31,10 @@ const MiniSquares = ({
     { id: "C", x: 50, y: 50 },
   ];
 
-  // Chuyển tọa độ điểm sang hệ tọa độ toàn bảng 1000x1000
   const getPointPosition = (x: number, y: number) => ({
-  x: ((col * 100 + x) / (cols * 100)) * 1000,
-  y: ((row * 100 + y) / (rows * 100)) * 1000,
-});
+    x: ((col * 100 + x) / (cols * 100)) * 1000,
+    y: ((row * 100 + y) / (rows * 100)) * 1000,
+  });
 
   return (
     <svg
@@ -105,44 +103,30 @@ const MiniSquares = ({
 
       {/* Nhãn */}
       <g className="region-labels">
-        {/* <text x="67" y="20">1</text>
-        <text x="33" y="20">2</text>
-        <text x="33" y="82">3</text>
-        <text x="67" y="82">4</text> */}
         <text x="50" y="55">{numberMain}</text>
       </g>
 
-      {/* Các điểm có thể click */}
-      {points.map((point) => (
-        <circle
-          key={point.id}
-          className="connection-point"
-          cx={point.x}
-          cy={point.y}
-          r="20"
-          // fill="#2563eb"
-          fill="transparent"
-          // stroke="white"
-          // strokeWidth="0.8"
-          style={{
-            cursor: "crosshair",
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
+      {/* Các điểm */}
+      {points.map((point) => {
+        const position = getPointPosition(
+          point.x,
+          point.y
+        );
 
-            const position = getPointPosition(
-              point.x,
-              point.y
-            );
-
-            onPointClick({
-              id: `${row}-${col}-${point.id}`,
-              x: position.x,
-              y: position.y,
-            });
-          }}
-        />
-      ))}
+        return (
+          <circle
+            key={point.id}
+            className="connection-point"
+            cx={point.x}
+            cy={point.y}
+            r="20"
+            fill="transparent"
+            data-point-id={`${row}-${col}-${point.id}`}
+            data-point-x={position.x}
+            data-point-y={position.y}
+          />
+        );
+      })}
     </svg>
   );
 };

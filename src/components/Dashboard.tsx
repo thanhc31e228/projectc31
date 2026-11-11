@@ -249,7 +249,7 @@ const Dashboard = () => {
         d="M 0 0 L 6 3 L 0 6"
         fill="none"
         stroke="#ef4444"
-        strokeWidth="1"
+        strokeWidth="0.3"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

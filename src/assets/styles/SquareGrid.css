@@ -24,12 +24,13 @@
   width: 100%;
   height: 100%;
 }
-/* Ẩn đường kẻ khi chưa hover */
-.square-grid .mini-squares {
+/* Ẩn đường kẻ mặc định */
+.square-grid-cell .mini-squares {
   opacity: 0;
   transition: opacity 0.2s ease;
 }
-/* Hiện đường kẻ khi hover */
-.square-grid:hover .mini-squares {
+
+/* Chỉ hiện ô nhỏ đang hover */
+.square-grid-cell:hover .mini-squares {
   opacity: 1;
 }

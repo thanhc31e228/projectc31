@@ -14,7 +14,7 @@ interface SquareGridProps {
   cols: number;
   coordinates: number | null;
   // toa do o vuong con trong 25 o vuong
-  subCoordinates?: string | null;
+  subCoordinates?: number | null;
   onPointClick: (point: Point) => void;
 }
 //o vuong lon 5x5
@@ -42,7 +42,8 @@ const SquareGrid = ({
         </div>
       )}
       <MiniSquares
-      subCoordinates={innerRow + '' + innerCol}
+      //subCoordinates là cái id ví dụ 61 221 
+     subCoordinates={((innerRow+1) * 10)+1 + innerCol}
         row={row * innerRows + innerRow}
         col={col * innerCols + innerCol}
         rows={rows * innerRows}

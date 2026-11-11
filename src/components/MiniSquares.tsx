@@ -12,7 +12,7 @@ interface MiniSquaresProps {
   rows: number;
   cols: number;
   coordinates?: number | null;
-  subCoordinates?: string | null;
+  subCoordinates?: number | null;
   onPointClick: (point: Point) => void;
 }
 
@@ -137,7 +137,7 @@ const MiniSquares = ({
             cy={point.y}
             r="30"
             fill="transparent"
-            data-point-id={`${coordinates}-${row}-${col}-${point.id}`}
+            data-point-id={`${coordinates}-${subCoordinates}-${point.id}`}
             data-point-x={position.x}
             data-point-y={position.y}
           />

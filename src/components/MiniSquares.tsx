@@ -33,13 +33,10 @@ const MiniSquares = ({
   ];
 
   // Chuyển tọa độ điểm sang hệ tọa độ toàn bảng 1000x1000
-  const getPointPosition = (
-    x: number,
-    y: number
-  ) => ({
-    x: ((col * 100 + x) / (cols * 100)) * 1000,
-    y: ((row * 100 + y) / (rows * 100)) * 1000,
-  });
+  const getPointPosition = (x: number, y: number) => ({
+  x: ((col * 100 + x) / (cols * 100)) * 1000,
+  y: ((row * 100 + y) / (rows * 100)) * 1000,
+});
 
   return (
     <svg

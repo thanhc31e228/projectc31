@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import SquareCard from "./SquareCard";
 import "../assets/styles/Dashboard.css";
+import SquareGrid from "./SquareGrid";
 
 export interface Point {
   id: string;
@@ -217,7 +218,7 @@ const Dashboard = () => {
         {/* Các ô vuông */}
         {Array.from({ length: rows }, (_, row) =>
           Array.from({ length: cols }, (_, col) => (
-            <SquareCard
+            <SquareGrid
               key={`${row}-${col}`}
               row={row}
               col={col}
@@ -230,7 +231,7 @@ const Dashboard = () => {
 
         {/* Lớp SVG vẽ đường nối */}
        <svg
-  className="connection-layer"
+     className="connection-layer"
   viewBox="0 0 1000 1000"
   preserveAspectRatio="none"
 >
@@ -248,7 +249,7 @@ const Dashboard = () => {
         d="M 0 0 L 6 3 L 0 6"
         fill="none"
         stroke="#ef4444"
-        strokeWidth="1.5"
+        strokeWidth="1"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -260,7 +261,7 @@ const Dashboard = () => {
     d={generateSmoothPath(connections)}
     fill="none"
     stroke="#ef4444"
-    strokeWidth="2"
+    strokeWidth="1"
     vectorEffect="non-scaling-stroke"
     strokeLinecap="round"
     markerMid="url(#arrow)"

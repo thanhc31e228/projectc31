@@ -1,6 +1,6 @@
 
-import MiniSquares from "./MiniSquares";
 import "../assets/styles/SquareCard.css";
+import SquareGrid from "./SquareGrid";
 
 interface Point {
   id: string;
@@ -15,7 +15,7 @@ interface SquareCardProps {
   cols: number;
   onPointClick: (point: Point) => void;
 }
-
+//5 ô vuông ảo
 const SquareCard = ({
   row,
   col,
@@ -23,9 +23,17 @@ const SquareCard = ({
   cols,
   onPointClick,
 }: SquareCardProps) => {
+console.log("Rendering SquareCard", { row, col, rows, cols });
   return (
     <div className="square-card">
-      <MiniSquares
+      {/* <MiniSquares
+        row={row}
+        col={col}
+        rows={rows}
+        cols={cols}
+        onPointClick={onPointClick}
+      /> */}
+      <SquareGrid
         row={row}
         col={col}
         rows={rows}

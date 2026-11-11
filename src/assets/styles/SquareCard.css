@@ -13,3 +13,14 @@
 
   overflow: hidden;
 }
+
+/* Ẩn đường kẻ khi chưa hover */
+.square-card .mini-squares {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* Hiện đường kẻ khi hover */
+.square-card:hover .mini-squares {
+  opacity: 1;
+}

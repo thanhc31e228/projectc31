@@ -103,7 +103,13 @@ const MiniSquares = ({
 
       {/* Nhãn */}
       <g className="region-labels">
+
         <text x="50" y="55">{numberMain}</text>
+        <text x={points[0].x} y={points[0].y - 2} fontSize="3" textAnchor="middle">1</text>
+        <text x={points[1].x} y={points[1].y - 2} fontSize="3" textAnchor="middle">2</text>
+        <text x={points[2].x} y={points[2].y - 2} fontSize="3" textAnchor="middle">4</text>
+        <text x={points[3].x} y={points[3].y - 2} fontSize="3" textAnchor="middle">3</text>
+
       </g>
 
       {/* Các điểm */}

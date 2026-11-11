@@ -24,6 +24,7 @@ const generateSmoothPath = (connections: Connection[]) => {
     ...connections.map((connection) => connection.to),
   ];
 
+  // console.log("Generating path for points:", points);
   if (points.length < 2) return "";
 
   let path = `M ${points[0].x} ${points[0].y}`;
@@ -70,6 +71,7 @@ const Dashboard = () => {
 
   // Click điểm để tạo đường nối
   const handlePointClick = (point: Point) => {
+    console.log("Point clicked:", point);
     if (!selectedPoint) {
       setSelectedPoint(point);
       return;

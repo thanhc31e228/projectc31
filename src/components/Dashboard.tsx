@@ -1,5 +1,11 @@
 
-import { useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
 import "../assets/styles/Dashboard.css";
 import SquareGrid from "./SquareGrid";
 
@@ -15,28 +21,34 @@ interface Connection {
   to: Point;
 }
 
-// Tạo đường cong nối các điểm
-const generateSmoothPath = (connections: Connection[]) => {
-  if (connections.length === 0) return "";
+interface Transform {
+  x: number;
+  y: number;
+  scale: number;
+}
 
-  const points: Point[] = [
+const MIN_SCALE = 0.3;
+const MAX_SCALE = 4;
+const DRAG_THRESHOLD = 5;
+
+const generateSmoothPath = (connections: Connection[]) => {
+  if (!connections.length) return "";
+
+  const points = [
     connections[0].from,
-    ...connections.map((connection) => connection.to),
+    ...connections.map((item) => item.to),
   ];
 
-  // console.log("Generating path for points:", points);
-  if (points.length < 2) return "";
-
   let path = `M ${points[0].x} ${points[0].y}`;
+
+  const tension = 0.2;
 
   for (let i = 0; i < points.length - 1; i++) {
     const current = points[i];
     const next = points[i + 1];
 
-    const previous = points[i - 1] || current;
-    const following = points[i + 2] || next;
-
-    const tension = 0.2;
+    const previous = points[i - 1] ?? current;
+    const following = points[i + 2] ?? next;
 
     const cp1x =
       current.x + (next.x - previous.x) * tension;
@@ -56,11 +68,26 @@ const generateSmoothPath = (connections: Connection[]) => {
   return path;
 };
 
+const coordinates: number[] = [
+  7, 83, 21, 56, 94, 12, 68,
+  35, 1, 79, 43, 90, 26, 61,
+  18, 72, 5, 47, 99, 32, 84,
+  14, 53, 8, 66, 39, 92, 24,
+  75, 11, 58, 3, 87, 41, 29,
+  63, 16, 96, 50, 34, 70, 45,
+];
+
 const Dashboard = () => {
   const rows = 6;
   const cols = 7;
 
-  // Quản lý điểm và đường nối
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  // =================================
+  // CONNECTION
+  // =================================
+
   const [selectedPoint, setSelectedPoint] =
     useState<Point | null>(null);
 
@@ -69,9 +96,7 @@ const Dashboard = () => {
 
   const connectionId = useRef(0);
 
-  // Click điểm để tạo đường nối
-  const handlePointClick = (point: Point) => {
-    // console.log("Point clicked:", point);
+  const handlePointClick = useCallback((point: Point) => {
     if (!selectedPoint) {
       setSelectedPoint(point);
       return;
@@ -89,186 +114,284 @@ const Dashboard = () => {
     ]);
 
     setSelectedPoint(point);
-  };
+  }, [selectedPoint]);
 
-  // Zoom bảng
-  const [scale, setScale] = useState(1);
+  // =================================
+  // TRANSFORM
+  // =================================
 
-  const [position, setPosition] = useState({
+  const transformRef = useRef<Transform>({
     x: 0,
     y: 0,
+    scale: 1,
   });
 
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
 
-  // Quản lý kéo bảng
-  const dragging = useRef(false);
-  const hasMoved = useRef(false);
+  // Chỉ cập nhật DOM, không gọi setState
+  const writeTransform = useCallback(() => {
+    const board = boardRef.current;
+    if (!board) return;
 
-  const startPointer = useRef({
-    x: 0,
-    y: 0,
+    const { x, y, scale } = transformRef.current;
+
+    board.style.transform =
+      `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+  }, []);
+
+  // =================================
+  // POINTER
+  // =================================
+
+  const pointerRef = useRef({
+    active: false,
+    moved: false,
+    pointerId: -1,
+
+    startX: 0,
+    startY: 0,
+
+    currentX: 0,
+    currentY: 0,
+
+    boardX: 0,
+    boardY: 0,
+
+    point: null as Point | null,
   });
 
-  const lastPointer = useRef({
-    x: 0,
-    y: 0,
-  });
+  // Tính vị trí kéo mới nhất
+  const updateDragPosition = useCallback(() => {
+    const pointer = pointerRef.current;
 
-  const pointerDownPoint = useRef<Point | null>(null);
+    if (!pointer.active || !pointer.moved) return;
 
-  // Zoom bằng Ctrl + lăn chuột
- const handleWheel = (
-  e: React.WheelEvent<HTMLDivElement>
-) => {
-  if (!e.ctrlKey) return;
+    transformRef.current.x =
+      pointer.boardX + pointer.currentX - pointer.startX;
 
-  e.preventDefault();
+    transformRef.current.y =
+      pointer.boardY + pointer.currentY - pointer.startY;
+  }, []);
 
-  const viewport = viewportRef.current;
-  if (!viewport) return;
+  // Gom nhiều sự kiện pointer vào một frame
+  const scheduleRender = useCallback(() => {
+    if (rafRef.current !== null) return;
 
-  const rect = viewport.getBoundingClientRect();
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
 
-  // Tọa độ con trỏ trong viewport
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
+      updateDragPosition();
+      writeTransform();
+    });
+  }, [updateDragPosition, writeTransform]);
 
-  // Tính hệ số zoom liên tục
-  const zoomSpeed = 0.002;
-  const zoomFactor = Math.exp(-e.deltaY * zoomSpeed);
+  // =================================
+  // POINTER DOWN
+  // =================================
 
-  const newScale = Math.min(
-    Math.max(scale * zoomFactor, 0.3),
-    4
-  );
-
-  // Tính tỷ lệ thay đổi zoom
-  const ratio = newScale / scale;
-
-  // Giữ nguyên vị trí dưới con trỏ chuột
-  setPosition({
-    x: mouseX - (mouseX - position.x) * ratio,
-    y: mouseY - (mouseY - position.y) * ratio,
-  });
-
-  setScale(newScale);
-};
-
-  // Bắt đầu nhấn chuột
   const handlePointerDown = (
     e: React.PointerEvent<HTMLDivElement>
   ) => {
     if (e.button !== 0) return;
 
-    dragging.current = true;
-    hasMoved.current = false;
+    const pointer = pointerRef.current;
 
-    startPointer.current = {
-      x: e.clientX,
-      y: e.clientY,
-    };
+    if (pointer.active) return;
 
-    lastPointer.current = {
-      x: e.clientX,
-      y: e.clientY,
-    };
+    let point: Point | null = null;
 
-    // Kiểm tra có nhấn vào điểm nối không
     const target = e.target;
 
-    if (
-      target instanceof Element &&
-      target.closest(".connection-point")
-    ) {
-      const pointElement = target.closest(
+    if (target instanceof Element) {
+      const element = target.closest(
         ".connection-point"
-      ) as SVGCircleElement;
+      ) as SVGCircleElement | null;
 
-      pointerDownPoint.current = {
-        id: pointElement.dataset.pointId!,
-        x: Number(pointElement.dataset.pointX),
-        y: Number(pointElement.dataset.pointY),
-      };
-    } else {
-      pointerDownPoint.current = null;
+      if (element?.dataset.pointId) {
+        point = {
+          id: element.dataset.pointId,
+          x: Number(element.dataset.pointX),
+          y: Number(element.dataset.pointY),
+        };
+      }
     }
+
+    const transform = transformRef.current;
+
+    pointerRef.current = {
+      active: true,
+      moved: false,
+      pointerId: e.pointerId,
+
+      startX: e.clientX,
+      startY: e.clientY,
+
+      currentX: e.clientX,
+      currentY: e.clientY,
+
+      boardX: transform.x,
+      boardY: transform.y,
+
+      point,
+    };
 
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
-  // Di chuyển chuột
+  // =================================
+  // POINTER MOVE
+  // =================================
+
   const handlePointerMove = (
     e: React.PointerEvent<HTMLDivElement>
   ) => {
-    if (!dragging.current) return;
+    const pointer = pointerRef.current;
 
-    const dx = e.clientX - startPointer.current.x;
-    const dy = e.clientY - startPointer.current.y;
+    if (!pointer.active) return;
 
-    // Di chuyển quá 5px thì xác định là kéo
-    if (Math.sqrt(dx * dx + dy * dy) > 5) {
-      hasMoved.current = true;
+    if (pointer.pointerId !== e.pointerId) return;
+
+    pointer.currentX = e.clientX;
+    pointer.currentY = e.clientY;
+
+    if (!pointer.moved) {
+      const dx = e.clientX - pointer.startX;
+      const dy = e.clientY - pointer.startY;
+
+      if (
+        Math.abs(dx) <= DRAG_THRESHOLD &&
+        Math.abs(dy) <= DRAG_THRESHOLD
+      ) {
+        return;
+      }
+
+      pointer.moved = true;
     }
 
-    if (!hasMoved.current) return;
-
-    const deltaX = e.clientX - lastPointer.current.x;
-    const deltaY = e.clientY - lastPointer.current.y;
-
-    lastPointer.current = {
-      x: e.clientX,
-      y: e.clientY,
-    };
-
-    setPosition((prev) => ({
-      x: prev.x + deltaX,
-      y: prev.y + deltaY,
-    }));
+    scheduleRender();
   };
 
-  // Kết thúc thao tác
+  // =================================
+  // FINISH POINTER
+  // =================================
+
+  const finishPointer = (
+    e: React.PointerEvent<HTMLDivElement>,
+    cancelled = false
+  ) => {
+    const pointer = pointerRef.current;
+
+    if (!pointer.active) return;
+
+    if (pointer.pointerId !== e.pointerId) return;
+
+    const isClick = !pointer.moved;
+    const clickedPoint = pointer.point;
+
+    // Đảm bảo lấy đúng vị trí cuối cùng
+    if (pointer.moved) {
+      updateDragPosition();
+
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+
+      writeTransform();
+    }
+
+    pointer.active = false;
+    pointer.point = null;
+
+    if (
+      e.currentTarget.hasPointerCapture(e.pointerId)
+    ) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+
+    if (!cancelled && isClick && clickedPoint) {
+      handlePointClick(clickedPoint);
+    }
+  };
+
   const handlePointerUp = (
     e: React.PointerEvent<HTMLDivElement>
   ) => {
-    if (!dragging.current) return;
-
-    // Chỉ tạo đường nối nếu thực sự click
-    if (!hasMoved.current && pointerDownPoint.current) {
-      handlePointClick(pointerDownPoint.current);
-    }
-
-    dragging.current = false;
-    hasMoved.current = false;
-    pointerDownPoint.current = null;
-
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
+    finishPointer(e);
   };
 
-  // Hủy thao tác
   const handlePointerCancel = (
     e: React.PointerEvent<HTMLDivElement>
   ) => {
-    dragging.current = false;
-    hasMoved.current = false;
-    pointerDownPoint.current = null;
-
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
+    finishPointer(e, true);
   };
 
-  // danh sách tọa độ lấy từ databse
-  const setCoordinates: number[] = [
-    7, 83, 21, 56, 94, 12, 68,
-    35, 1, 79, 43, 90, 26, 61,
-    18, 72, 5, 47, 99, 32, 84,
-    14, 53, 8, 66, 39, 92, 24,
-    75, 11, 58, 3, 87, 41, 29,
-    63, 16, 96, 50, 34, 70, 45
-  ];
+  // =================================
+  // ZOOM
+  // =================================
+
+  const handleWheel = (
+    e: React.WheelEvent<HTMLDivElement>
+  ) => {
+    if (!e.ctrlKey) return;
+
+    e.preventDefault();
+
+    const viewport = viewportRef.current;
+    const board = boardRef.current;
+
+    if (!viewport || !board) return;
+
+    const viewportRect = viewport.getBoundingClientRect();
+
+    const current = transformRef.current;
+
+    // Tọa độ chuột tương đối với gốc ban đầu của board
+    const mouseX =
+      e.clientX - viewportRect.left - board.offsetLeft;
+
+    const mouseY =
+      e.clientY - viewportRect.top - board.offsetTop;
+
+    const zoomFactor = Math.exp(-e.deltaY * 0.002);
+
+    const newScale = Math.min(
+      Math.max(
+        current.scale * zoomFactor,
+        MIN_SCALE
+      ),
+      MAX_SCALE
+    );
+
+    const ratio = newScale / current.scale;
+
+    transformRef.current = {
+      scale: newScale,
+
+      x: mouseX - (mouseX - current.x) * ratio,
+
+      y: mouseY - (mouseY - current.y) * ratio,
+    };
+
+    scheduleRender();
+  };
+
+  // =================================
+  // CLEANUP
+  // =================================
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, []);
+
+  // =================================
+  // RENDER
+  // =================================
+
   return (
     <div
       ref={viewportRef}
@@ -280,31 +403,27 @@ const Dashboard = () => {
       onPointerCancel={handlePointerCancel}
     >
       <div
+        ref={boardRef}
         className="square-board"
-        style={{
-          transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-        }}
       >
-       {/* Các ô vuông */}
-      {Array.from({ length: rows }, (_, row) =>
-        Array.from({ length: cols }, (_, col) => {
-          const index = row * cols + col;
+        {Array.from({ length: rows }, (_, row) =>
+          Array.from({ length: cols }, (_, col) => {
+            const index = row * cols + col;
 
-          return (
-            <SquareGrid
-              coordinates={setCoordinates[index] ?? null}
-              key={`${row}-${col}`}
-              row={row}
-              col={col}
-              rows={rows}
-              cols={cols}
-              onPointClick={handlePointClick}
-            />
-          );
-        })
-      )}
+            return (
+              <SquareGrid
+                key={`${row}-${col}`}
+                coordinates={coordinates[index] ?? null}
+                row={row}
+                col={col}
+                rows={rows}
+                cols={cols}
+                onPointClick={handlePointClick}
+              />
+            );
+          })
+        )}
 
-        {/* Lớp SVG vẽ đường nối */}
         <svg
           className="connection-layer"
           viewBox="0 0 1000 1000"
@@ -312,22 +431,22 @@ const Dashboard = () => {
         >
           <defs>
             <marker
-  id="arrow"
-  markerWidth="8"
-  markerHeight="8"
-  refX="6"
-  refY="3"
-  orient="auto"
-  markerUnits="userSpaceOnUse"
->
-  <path
-    d="M 0 0 L 6 3"
-    fill="none"
-    stroke="#ef4444"
-    strokeWidth="1"
-    strokeLinecap="round"
-  />
-</marker>
+              id="arrow"
+              markerWidth="8"
+              markerHeight="8"
+              refX="6"
+              refY="3"
+              orient="auto"
+              markerUnits="userSpaceOnUse"
+            >
+              <path
+                d="M 0 0 L 6 3"
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="1"
+                strokeLinecap="round"
+              />
+            </marker>
           </defs>
 
           <path

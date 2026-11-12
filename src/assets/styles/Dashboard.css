@@ -15,9 +15,7 @@ body,
 
 .dashboard {
   position: relative;
-
   width: 100%;
-  height: 100vh;
   height: 100dvh;
 
   overflow: hidden;
@@ -29,20 +27,18 @@ body,
   background: #f8fafc;
 
   touch-action: none;
+  overscroll-behavior: none;
+
   user-select: none;
   -webkit-user-select: none;
 
   cursor: grab;
-
-  /* Không cho trình duyệt tự xử lý thao tác */
-  overscroll-behavior: none;
 }
 
 .dashboard:active {
   cursor: grabbing;
 }
 
-/* Bảng chính */
 .square-board {
   position: relative;
 
@@ -62,15 +58,10 @@ body,
 
   transform-origin: 0 0;
 
-  /* Tối ưu render khi zoom và kéo */
   will-change: transform;
   backface-visibility: hidden;
-
-  /* Tránh transition gây trễ khi kéo */
-  transition: none;
 }
 
-/* Từng ô lớn */
 .square-grid {
   position: relative;
 
@@ -88,7 +79,6 @@ body,
   touch-action: none;
 }
 
-/* Từng ô nhỏ */
 .square-grid-cell {
   position: relative;
 
@@ -100,42 +90,25 @@ body,
   touch-action: none;
 }
 
-/* SVG từng ô nhỏ */
-.mini-squares {
-  display: block;
-
-  width: 100%;
-  height: 100%;
-
-  overflow: visible;
-
-  pointer-events: none;
-}
-
-/* Lớp SVG đường nối */
 .connection-layer {
   position: absolute;
-
   inset: 0;
 
   width: 100%;
   height: 100%;
 
   overflow: visible;
-
   pointer-events: none;
 
   z-index: 10;
 }
 
-/* Các điểm nối */
 .connection-point {
-  cursor: crosshair;
-
   pointer-events: all;
+  cursor: crosshair;
 }
 
-/* Không cho trình duyệt chọn nội dung */
+
 .square-board,
 .square-grid,
 .square-grid-cell,
